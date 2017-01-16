@@ -9,7 +9,7 @@ echo "Please, run this script from the egs directory!" >&2 &&
 exit 1;
 
 function get_lattice_nbest () {
-  lattice-to-nbest --n=3 ark:- ark:- 2> /dev/null |
+  lattice-to-nbest --n="$1" ark:- ark:- 2> /dev/null |
   nbest-to-linear ark:- ark:/dev/null ark,t:- ark,t:- 2> /dev/null |
   awk '{
     if (NR % 2 == 0) {
@@ -59,16 +59,50 @@ fi;
 ../lattice-char-to-word \
   --save-isymbols=lattice.word.sym --save-osymbols=/dev/null \
   3 ark:lattice.char.txt ark,t:lattice.word.txt;
+echo "";
 
 # Both lattices should have the same number of paths!
-echo "CHECK NUMBER OF PATHS...";
-"$lattice_info_cmd" ark:lattice.char.txt | grep "avg. of paths";
-"$lattice_info_cmd" ark:lattice.word.txt | grep "avg. of paths";
+echo "CHECK NUMBER OF PATHS FOR THE TINY LATTICE...";
+echo -n "Char lattice ";
+"$lattice_info_cmd" ark:lattice.char.txt 2> /dev/null |
+awk '$0 ~ /avg. of paths/{ print $1, $2, $3":", $4 }';
+echo -n "Word lattice ";
+"$lattice_info_cmd" ark:lattice.word.txt 2> /dev/null |
+awk '$0 ~ /avg. of paths/{ print $1, $2, $3":", $4 }';
 echo "";
 
 # All paths should have the same cost!
-echo "CHECK PATHS AND COSTS...";
+echo "CHECK PATHS AND COSTS FOR THE TINY LATTICE...";
 echo "Paths from char lattice:";
-cat lattice.char.txt | get_lattice_nbest;
+cat lattice.char.txt | get_lattice_nbest 3;
 echo "Paths from word lattice:";
-cat lattice.word.txt | get_lattice_nbest | nbest_word_to_char lattice.word.sym;
+cat lattice.word.txt | get_lattice_nbest 3 | nbest_word_to_char lattice.word.sym;
+echo "";
+
+# Convert character to word-level lattices in IAM
+../lattice-char-to-word \
+  --save-isymbols=iam.word.sym --save-osymbols=/dev/null \
+  "65 66 67 68 69 70 71 74 75 76 77 78 79" \
+  "ark:zcat iam.char.ark.gz|" \
+  "ark:|gzip -9 > iam.word.ark.gz";
+echo "";
+
+# Check number of paths in the IAM lattices
+echo "CHECK NUMBER OF PATHS FOR IAM LATTICES...";
+echo -n "Char lattice ";
+"$lattice_info_cmd" "ark:zcat iam.char.ark.gz|" 2> /dev/null |
+awk '$0 ~ /avg. of paths/{ print $1, $2, $3":", $4 }';
+echo -n "Word lattice ";
+"$lattice_info_cmd" "ark:zcat iam.word.ark.gz|" 2> /dev/null |
+awk '$0 ~ /avg. of paths/{ print $1, $2, $3":", $4 }';
+echo "";
+
+# Check score of the best path in the IAM lattices
+echo "CHECK BEST PATH SCORE FOR IAM LATTICES...";
+echo "Best path score from char lattice:";
+lattice-best-path "ark:zcat iam.char.ark.gz|"  2>&1 | awk '$0 ~ /best cost/{ print $(NF - 3);}'
+echo "Best path score from word lattice:";
+lattice-best-path "ark:zcat iam.word.ark.gz|"  2>&1 | awk '$0 ~ /best cost/{ print $(NF - 3);}'
+echo "";
+
+exit 0;
