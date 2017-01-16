@@ -8,7 +8,7 @@ endif
 EXTRA_CXXFLAGS = -Wno-sign-compare -Wno-unused-variable -I$(KALDI_ROOT)/src
 include $(KALDI_ROOT)/src/kaldi.mk
 
-BINFILES = lattice-remove-ctc-blank
+BINFILES = lattice-char-to-word
 
 OBJFILES =
 
