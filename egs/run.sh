@@ -57,7 +57,7 @@ fi;
 
 # Convert character-level to word-level lattice
 ../lattice-char-to-word \
-  --save-isymbols=lattice.word.sym --save-osymbols=/dev/null \
+  --save-symbols=lattice.word.sym \
   3 ark:lattice.char.txt ark,t:lattice.word.txt;
 echo "";
 
@@ -81,7 +81,7 @@ echo "";
 
 # Convert character to word-level lattices in IAM
 ../lattice-char-to-word \
-  --save-isymbols=iam.word.sym --save-osymbols=/dev/null \
+  --save-symbols=iam.word.sym \
   "65 66 67 68 69 70 71 74 75 76 77 78 79" \
   "ark:zcat iam.char.ark.gz|" \
   "ark:|gzip -9 > iam.word.ark.gz";

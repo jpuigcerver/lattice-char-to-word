@@ -47,6 +47,9 @@ void ExpandFst(
                       Weight,
                       std::vector<Label>,
                       std::vector<Label> > SState;
+  KALDI_ASSERT(ofst != NULL);
+  KALDI_ASSERT(ilabel_map != NULL);
+  KALDI_ASSERT(olabel_map != NULL);
 
   // Reserve symbol for epsilon
   ilabel_map->insert(make_pair(std::vector<Label>{}, 0));
@@ -191,6 +194,18 @@ int main(int argc, char** argv) {
         "from the input lattice would be expanded, so that each arc in the "
         "output lattice would be a full path from the input lattice.\n"
         "\n"
+        "However, the exponential growth is constrained by the use of "
+        "separator symbols, and make the tool practical in real scenarios.\n"
+        "\n"
+        "In addition, there are two prunning mechanisms to prevent the output "
+        "lattices from exploding:\n"
+        "\n"
+        "1. You can prune the character lattices before expanding with the "
+        "--beam option.\n"
+        "2. You can set a maximum length for the output words with the "
+        "--max-length option. Any path with a word longer than this number "
+        "of characters will be removed from the output path.\n"
+        "\n"
         "Usage: lattice-char-to-word [options] separator-symbols "
         "lat-rspecifier lat-wspecifier\n"
         " e.g.: lattice-char-to-word \"3 4\" ark:1.lat ark:1-words.lat\n";
@@ -200,8 +215,7 @@ int main(int argc, char** argv) {
     BaseFloat graph_scale = 1.0;
     BaseFloat beam = std::numeric_limits<BaseFloat>::infinity();
     int32 max_length = std::numeric_limits<int32>::max();
-    std::string save_isymbols = "";
-    std::string save_osymbols = "";
+    std::string save_symbols = "";
 
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods in the lattices.");
@@ -209,8 +223,12 @@ int main(int argc, char** argv) {
                 "Scaling factor for graph probabilities in the lattices.");
     po.Register("beam", &beam, "Pruning beam (applied after acoustic scaling "
                 "and adding the insertion penalty).");
-    po.Register("save-isymbols", &save_isymbols, "");
-    po.Register("save-osymbols", &save_osymbols, "");
+    po.Register("save-symbols", &save_symbols, "If given, all lattices will "
+                "use the same symbol table which will be written to this "
+                "destination file. If not provided, each lattice contains "
+                "its own symbol table.");
+    po.Register("max-length", &max_length,
+                "Max. length (in characters) for a word.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -247,8 +265,7 @@ int main(int argc, char** argv) {
     const std::string lattice_in_str = po.GetArg(2);
     const std::string lattice_out_str = po.GetArg(3);
 
-    std::unordered_map<std::vector<Label>, Label> ilabel_map;
-    std::unordered_map<std::vector<Label>, Label> olabel_map;
+    std::unordered_map<std::vector<Label>, Label> label_map;
     SequentialCompactLatticeReader lattice_reader(lattice_in_str);
     CompactLatticeWriter lattice_writer(lattice_out_str);
 
@@ -272,20 +289,16 @@ int main(int argc, char** argv) {
 
       // Expand fst to obtain the word-level arcs
       CompactLattice olat;
-      if (save_isymbols == "") ilabel_map.clear();
-      if (save_osymbols == "") olabel_map.clear();
+      if (save_symbols == "") label_map.clear();
       fst::ExpandFst(lat, delimiter_symbols, max_length, &olat,
-                     &ilabel_map, &olabel_map);
+                     &label_map, &label_map);
 
-      // Write symbol tables in the output lattice, if no filenames where given
-      if (save_isymbols == "") {
+      // Write symbol table in the output lattice, if no filename was given
+      // for a common table.
+      if (save_symbols == "") {
         fst::SymbolTable stable;
-        MapToSymbolsTable(ilabel_map, &stable);
+        MapToSymbolsTable(label_map, &stable);
         olat.SetInputSymbols(&stable);
-      }
-      if (save_osymbols == "") {
-        fst::SymbolTable stable;
-        MapToSymbolsTable(olabel_map, &stable);
         olat.SetOutputSymbols(&stable);
       }
 
@@ -293,17 +306,12 @@ int main(int argc, char** argv) {
       lattice_writer.Write(lattice_key, olat);
     }
 
-    // Save input and output symbol tables into separate files, if these
+    // Save symbol table into separate files, if these
     // filenames where given
-    if (save_isymbols != "") {
+    if (save_symbols != "") {
       fst::SymbolTable stable;
-      MapToSymbolsTable(ilabel_map, &stable);
-      KALDI_ASSERT(stable.WriteText(save_isymbols));
-    }
-    if (save_osymbols != "") {
-      fst::SymbolTable stable;
-      MapToSymbolsTable(olabel_map, &stable);
-      KALDI_ASSERT(stable.WriteText(save_osymbols));
+      MapToSymbolsTable(label_map, &stable);
+      KALDI_ASSERT(stable.WriteText(save_symbols));
     }
 
     return 0;
