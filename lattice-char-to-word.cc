@@ -169,7 +169,8 @@ void MapToSymbolsTable(
   for (const auto& k_v : vmap) {
     const mapped_type& k = k_v.first;
     const std::string& v = k_v.second;
-    KALDI_ASSERT(stable->AddSymbol(v, k) == k);
+    const mapped_type& kt = stable->AddSymbol(v, k);
+    KALDI_ASSERT(kt == k);
   }
 }
 
@@ -322,7 +323,8 @@ int main(int argc, char** argv) {
     if (save_symbols != "") {
       fst::SymbolTable stable;
       MapToSymbolsTable(label_map, &stable);
-      KALDI_ASSERT(stable.WriteText(save_symbols));
+      const bool r = stable.WriteText(save_symbols);
+      KALDI_ASSERT(r);
     }
 
     return 0;
