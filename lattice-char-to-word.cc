@@ -148,6 +148,9 @@ void MapToSymbolsTable(
     const M& smap, SymbolTable* stable) {
   typedef typename M::key_type key_type;        // i.e. vector<int>
   typedef typename M::mapped_type mapped_type;  // i.e. int
+  // First, put map into a vector, in order to sort it according to the values,
+  // not the keys.
+  std::vector<std::pair<mapped_type, std::string>> vmap;
   for (const auto& k_v : smap) {
     const key_type& k = k_v.first;
     const mapped_type& v = k_v.second;
@@ -158,7 +161,15 @@ void MapToSymbolsTable(
     std::string str = ss.str();
     if (str.empty()) { str = "0"; }  // epsilon
     else { str.pop_back(); }         // pop last _
-    KALDI_ASSERT(stable->AddSymbol(str, v) == v);
+    vmap.push_back(std::make_pair(v, str));
+  }
+  // Sort the vector.
+  std::sort(vmap.begin(), vmap.end());
+  // Add the symbols to the output table.
+  for (const auto& k_v : vmap) {
+    const mapped_type& k = k_v.first;
+    const std::string& v = k_v.second;
+    KALDI_ASSERT(stable->AddSymbol(v, k) == k);
   }
 }
 
