@@ -271,8 +271,8 @@ int main(int argc, char** argv) {
     scale[1][1] = acoustic_scale;
     // Inv. scaling scores, used to rescale the output lattices before writing
     std::vector<std::vector<double> > iscale(2, std::vector<double>{0.0, 0.0});
-    scale[0][0] = 1.0 / graph_scale;
-    scale[1][1] = 1.0 / acoustic_scale;
+    iscale[0][0] = 1.0 / graph_scale;
+    iscale[1][1] = 1.0 / acoustic_scale;
 
     const std::string lattice_in_str = po.GetArg(2);
     const std::string lattice_out_str = po.GetArg(3);
