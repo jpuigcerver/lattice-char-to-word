@@ -8,6 +8,8 @@ endif
 EXTRA_CXXFLAGS = -Wno-sign-compare -Wno-unused-variable -I$(KALDI_ROOT)/src
 include $(KALDI_ROOT)/src/kaldi.mk
 
+KALDI_CONF_VERSION = $(shell awk '/CONFIGURE_VERSION/{if($$3 >= 7)print $$3}' $(KALDI_ROOT)/src/kaldi.mk)
+
 BINFILES = lattice-char-to-word
 
 OBJFILES =
@@ -20,8 +22,11 @@ ADDLIBS = \
         $(KALDI_ROOT)/src/hmm/kaldi-hmm.a \
         $(KALDI_ROOT)/src/util/kaldi-util.a \
 	$(KALDI_ROOT)/src/matrix/kaldi-matrix.a \
-	$(KALDI_ROOT)/src/thread/kaldi-thread.a \
 	$(KALDI_ROOT)/src/base/kaldi-base.a
+	
+ifeq (,$(KALDI_CONF_VERSION))
+    ADDLIBS += $(KALDI_ROOT)/src/thread/kaldi-thread.a
+endif
 
 include $(KALDI_ROOT)/src/makefiles/default_rules.mk
 
