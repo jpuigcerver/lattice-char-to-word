@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "base/kaldi-common.h"
+#include "base/timer.h"
 #include "util/common-utils.h"
 #include "fstext/kaldi-fst-io.h"
 #include "fstext/fstext-utils.h"
@@ -287,6 +288,9 @@ int main(int argc, char** argv) {
       CompactLattice lat = lattice_reader.Value();
       lattice_reader.FreeCurrent();
 
+      const auto orig_num_states = lat.NumStates();
+      const auto orig_num_arcs = NumArcs(lat);
+
       // Acoustic scale
       if (acoustic_scale != 1.0 || graph_scale != 1.0)
         fst::ScaleLattice(scale, &lat);
@@ -298,6 +302,8 @@ int main(int argc, char** argv) {
       // Put weights into the original scale
       if (acoustic_scale != 1.0 || graph_scale != 1.0)
         fst::ScaleLattice(iscale, &lat);
+
+      Timer timer;
 
       // Expand fst to obtain the word-level arcs
       CompactLattice olat;
@@ -313,6 +319,13 @@ int main(int argc, char** argv) {
         olat.SetInputSymbols(&stable);
         olat.SetOutputSymbols(&stable);
       }
+
+      KALDI_LOG << "Lattice " << lattice_key << " expanded #states from "
+                << orig_num_states << " to "
+                << olat.NumStates()
+                << " and #arcs from " << orig_num_arcs
+                << " to " << NumArcs(olat)
+                << " in " << timer.Elapsed() << " seconds.";
 
       // Write output lattice
       lattice_writer.Write(lattice_key, olat);
